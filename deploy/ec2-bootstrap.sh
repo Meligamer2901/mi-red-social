@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Bootstrap de la instancia EC2 (Ubuntu 22.04 LTS, t2.small, N. Virginia)
+# Bootstrap de la instancia EC2 (Ubuntu 22.04/24.04 LTS, t3.micro/t2.small)
 # Instala todo lo necesario y deja la app corriendo con PM2 + nginx.
 #
 # Uso (dentro de la instancia, via SSH):
@@ -27,6 +27,13 @@ cd "$PROYECTO_DIR"
 echo "==> Actualizando paquetes del sistema..."
 sudo apt-get update -y
 sudo apt-get upgrade -y
+
+echo "==> Creando swap de 2 GB (si no existe; util en instancias de 1 GB de RAM)..."
+if ! swapon --show | grep -q swapfile; then
+    sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+    sudo mkswap /swapfile && sudo swapon /swapfile
+    grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+fi
 
 echo "==> Instalando dependencias nativas (para 'canvas' y 'sharp')..."
 sudo apt-get install -y --no-install-recommends \
@@ -55,6 +62,9 @@ sudo npm install -g pm2
 
 echo "==> Instalando dependencias del proyecto (npm ci)..."
 npm ci --omit=dev
+
+echo "==> Compilando el frontend React (frontend/dist)..."
+( cd frontend && npm ci && VITE_API_URL=/api npm run build )
 
 if [ ! -f .env ]; then
     echo "==> No existe .env; copiando .env.example -> .env"
@@ -90,7 +100,8 @@ echo "    ejecuta el comando 'sudo env PATH=...' que imprime este comando:"
 pm2 startup systemd -u "$USER" --hp "$HOME" || true
 
 echo "==> Configurando nginx como reverse proxy..."
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/mi-red-social
+sed "s|__PROYECTO_DIR__|$PROYECTO_DIR|g" deploy/nginx.conf | sudo tee /etc/nginx/sites-available/mi-red-social >/dev/null
+sudo chmod o+x "$HOME"
 sudo ln -sf /etc/nginx/sites-available/mi-red-social /etc/nginx/sites-enabled/mi-red-social
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t

@@ -30,3 +30,10 @@ Thumbs.db
 *.pem
 *.ppk
 credentials.csv
+
+# Frontend compilado y respaldos temporales
+frontend/dist/
+*.bak
+*.tar.gz
+mi_red_social_final.zip
+_to_delete_tmp_extract/

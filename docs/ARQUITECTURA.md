@@ -4,15 +4,15 @@ Proyecto Final de Desarrollo Web (UMG) — Red social de fotografías tipo Insta
 
 ## 1. Visión general
 
-La aplicación es un backend **Node.js / Express** con un frontend **HTML + JavaScript
-plano** (sin framework, decisión documentada en la sección 5), una base de datos
+La aplicación es un backend **Node.js / Express** con un frontend en **ReactJS**
+(Vite + React Router, carpeta `frontend/`), una base de datos
 **relacional PostgreSQL** y almacenamiento de imágenes desacoplado (**disco local en
 desarrollo / Amazon S3 en producción**) a través de una capa de abstracción propia.
 
 ```mermaid
 flowchart LR
     subgraph Cliente["Navegador"]
-        FE["Frontend estatico\n(HTML + app.js)"]
+        FE["Frontend React\n(Vite, build estatico)"]
     end
 
     subgraph EC2["Instancia AWS EC2 (t2.small)"]
@@ -120,11 +120,12 @@ capa, así que cambiar de un entorno a otro es solo cuestión de variables de en
   MongoDB; se migró completamente a PostgreSQL para cumplir el requisito explícito
   de "base de datos relacional" para cuentas de usuario y ubicación de imágenes
   (ver `docs/ESQUEMA_BD.md`).
-- **Frontend en HTML/JS plano (no ReactJS)**: el enunciado sugiere ReactJS para el
-  login/reCAPTCHA. Se optó por mantener el frontend existente (ya funcional, con
-  Google Login y reCAPTCHA integrados) en vanilla JS para minimizar riesgo de
-  regresiones en una entrega con alcance ya amplio. Es una decisión documentada,
-  no un olvido.
+- **Frontend en ReactJS**: el enunciado pide integrar Google Login y reCAPTCHA con
+  ReactJS. El frontend (`frontend/`) está hecho con React 18, Vite y React Router;
+  Google Login y reCAPTCHA v2 son componentes React (`GoogleButton.jsx`,
+  `Recaptcha.jsx`). Para producción se compila con `npm run build` y nginx sirve la
+  carpeta `frontend/dist` como sitio estático. Los archivos HTML y `app.js` de la
+  raíz son la versión anterior del frontend y ya no se usan.
 - **Amazon Rekognition**: no implementado (es el punto "opcional avanzado" del
   enunciado). El reconocimiento facial se resuelve con `face-api.js`, que sí es un
   requisito obligatorio.
