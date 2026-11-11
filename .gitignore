@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (contienen secretos, nunca se suben)
+.env
+.env.local
+
+# Imagenes subidas por usuarios en modo almacenamiento local
+# (los originales y transformaciones se regeneran con el uso de la app;
+#  solo se versiona la estructura de carpetas via .gitkeep)
+imagenes/usuarios/*
+imagenes/post/*
+!imagenes/usuarios/.gitkeep
+!imagenes/post/.gitkeep
+!imagenes/recursos/
+
+# Logs
+*.log
+npm-debug.log*
+logs/*
+!logs/.gitkeep
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+
+# Claves SSH / credenciales (por si se colocan accidentalmente en la raiz)
+*.pem
+*.ppk
+credentials.csv

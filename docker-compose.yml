@@ -1,0 +1,28 @@
+# Uso: DESARROLLO LOCAL unicamente (levanta solo PostgreSQL para que no
+# tengas que instalarlo a mano). La app Node se sigue corriendo con
+# "npm run dev" en tu maquina, apuntando a este contenedor via .env
+# (DB_HOST=localhost, DB_PORT=5432).
+#
+# En la instancia EC2 de produccion NO se usa este archivo: alli PostgreSQL
+# y la app corren como servicios nativos (ver docs/DESPLIEGUE.md y
+# deploy/ec2-bootstrap.sh) para no competir por RAM con las librerias de
+# vision por computadora (sharp/canvas/tensorflow) en una instancia t2.small.
+#
+# Uso: docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mi_red_social_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mi_red_social
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: cambia_esta_clave
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
