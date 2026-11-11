@@ -22,7 +22,7 @@ let s3Client = null;
 function getS3Client() {
     if (!s3Client) {
         const { S3Client } = require("@aws-sdk/client-s3");
-        s3Client = new S3Client({ region: process.env.AWS_REGION || "us-east-1" });
+        s3Client = new S3Client({ region: process.env.AWS_REGION || "us-east-2" });
     }
     return s3Client;
 }
@@ -93,7 +93,7 @@ function urlPublica(key) {
     if (!key) return null;
     if (DRIVER === "s3") {
         const bucket = process.env.AWS_S3_BUCKET;
-        const region = process.env.AWS_REGION || "us-east-1";
+        const region = process.env.AWS_REGION || "us-east-2";
         return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
     }
     return `${BASE_URL}/imagenes/${key}`;

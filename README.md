@@ -25,13 +25,14 @@ reconocimiento facial automáticos, y almacenamiento en la nube (Amazon S3).
 | Autenticación | JWT propio + bcrypt (hash + sal) + Google OAuth2 + reCAPTCHA v2 |
 | Procesamiento de imagenes | Sharp (transformaciones) + face-api.js (reconocimiento facial) |
 | Almacenamiento | Disco local (desarrollo) / Amazon S3 (producción) |
-| Despliegue | AWS EC2 (t2.small, N. Virginia) + PM2 + nginx + Route 53 |
+| Despliegue | AWS EC2 (t3.micro, Ohio us-east-2) + PM2 + nginx + Route 53 |
 
 ## Documentación
 
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — arquitectura general y diagramas.
 - [`docs/ESQUEMA_BD.md`](docs/ESQUEMA_BD.md) — esquema de la base de datos relacional.
 - [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) — instrucciones paso a paso para desplegar en AWS.
+- [`docs/ENTREGA_CATEDRATICO.md`](docs/ENTREGA_CATEDRATICO.md) — datos de acceso y pasos para la revisión.
 - [`docs/MANUAL_USUARIO.md`](docs/MANUAL_USUARIO.md) — cómo usar la aplicación.
 - [`docs/SEGURIDAD_BD.md`](docs/SEGURIDAD_BD.md) — manual de seguridad de la base de datos.
 - [`docs/MANTENIMIENTO_BD.md`](docs/MANTENIMIENTO_BD.md) — plan de mantenimiento de la base de datos.

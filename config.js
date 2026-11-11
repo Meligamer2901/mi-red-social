@@ -8,6 +8,6 @@
 window.APP_CONFIG = {
     API_URL: "http://localhost:4000/api",
     BASE_URL: "http://localhost:4000",
-    GOOGLE_CLIENT_ID: "374304061961-3upl3n1luh3go74efggfiqqqn8ohfch7.apps.googleusercontent.com",
+    GOOGLE_CLIENT_ID: "140926779046-su24vd9cvvdcjic6iikb31h0cfjh9pv0.apps.googleusercontent.com",
     RECAPTCHA_SITE_KEY: "6Le8oxouAAAAAIx2rc1GnK7qJZAjNf0HIldbwVUi"
 };

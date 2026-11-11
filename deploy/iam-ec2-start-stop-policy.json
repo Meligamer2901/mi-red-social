@@ -18,7 +18,7 @@
         "ec2:StartInstances",
         "ec2:StopInstances"
       ],
-      "Resource": "arn:aws:ec2:us-east-1:<ID_DE_CUENTA>:instance/<ID_DE_INSTANCIA>"
+      "Resource": "arn:aws:ec2:us-east-2:*:instance/i-080caf245240b78e3"
     }
   ]
 }

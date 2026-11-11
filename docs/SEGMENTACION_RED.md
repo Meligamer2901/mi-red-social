@@ -8,7 +8,7 @@ para un entorno real.
 
 ## 1. Arquitectura actual (despliegue de la entrega)
 
-Todo corre en una instancia **EC2 t2.small** en N. Virginia, protegida por un Security
+Todo corre en una instancia **EC2 t3.micro** en Ohio (us-east-2), protegida por un Security
 Group. La separación entre componentes es **lógica** (procesos y puertos), no física.
 
 ```mermaid
@@ -16,7 +16,7 @@ flowchart LR
     U["Usuarios\n(Internet)"] --> R53["Route 53\n(DNS)"]
     R53 --> SG
     subgraph SG["Security Group: web (80, 443 abiertos · 22 solo tu IP)"]
-        subgraph EC2["EC2 t2.small (Ubuntu)"]
+        subgraph EC2["EC2 t3.micro (Ubuntu)"]
             NG["nginx\n:80 / :443"]
             ND["Node.js (PM2)\n:4000 solo vía nginx"]
             PG[("PostgreSQL\n:5432 solo localhost")]
@@ -72,7 +72,7 @@ subred privada, sin ruta a internet.
 ```mermaid
 flowchart TB
     U["Internet"] --> R53["Route 53"] --> IGW["Internet Gateway"]
-    subgraph VPC["VPC 10.0.0.0/16 (us-east-1)"]
+    subgraph VPC["VPC 10.0.0.0/16 (us-east-2)"]
         subgraph PUB["Subred pública 10.0.1.0/24"]
             WEB["EC2: nginx + Node.js\nSG-web"]
         end

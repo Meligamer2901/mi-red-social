@@ -113,7 +113,7 @@ porque solo guardan la ruta.
 | `RECAPTCHA_SECRET_KEY` | Regenerar en el panel de reCAPTCHA y actualizar `.env` |
 | Usuario IAM del catedrático | Desactivarlo y crear otro |
 
-### 5.6 La región us-east-1 no está disponible
+### 5.6 La región us-east-2 no está disponible
 Es poco probable, pero el plan es reconstruir en otra región: crear el bucket de imágenes
 nuevo (o activar replicación entre regiones por adelantado), lanzar una instancia con el
 script de despliegue y restaurar el último `pg_dump`. El RTO sube a medio día.

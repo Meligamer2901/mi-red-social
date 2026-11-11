@@ -15,7 +15,7 @@ flowchart LR
         FE["Frontend React\n(Vite, build estatico)"]
     end
 
-    subgraph EC2["Instancia AWS EC2 (t2.small)"]
+    subgraph EC2["Instancia AWS EC2 (t3.micro)"]
         NGINX["nginx\n(reverse proxy :80/:443)"]
         API["Node.js / Express\n(PM2)"]
         PG[("PostgreSQL\nusuarios, posts, followers,\nimage_variants, face_detections")]
