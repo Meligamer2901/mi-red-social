@@ -61,7 +61,12 @@ async function serializarUno(post) {
 // Guardar la publicacion en la base de datos
 const crear = async (req, res) => {
     try {
-        const { usuario, usuarioNick, contenido } = req.body;
+        // El autor se toma SIEMPRE del JWT (req.user), nunca de lo que mande
+        // el cliente en el body, para que nadie pueda publicar suplantando a
+        // otro usuario.
+        const usuario = req.user.id;
+        const usuarioNick = req.user.nick;
+        const { contenido } = req.body;
 
         if (!usuario || !contenido) {
             return res.status(400).json({
@@ -192,6 +197,13 @@ const borrar = async (req, res) => {
             });
         }
 
+        if (articulo.usuario !== req.user.id) {
+            return res.status(403).json({
+                status: "error",
+                mensaje: "No tienes permiso para borrar esta publicacion"
+            });
+        }
+
         const variantes = await ImageVariant.findAll({
             where: { ownerType: "post", ownerId: articulo.id }
         });
@@ -226,6 +238,13 @@ const editar = async (req, res) => {
             return res.status(500).json({
                 status: "Error",
                 mensaje: "Error al actualizar"
+            });
+        }
+
+        if (articulo.usuario !== req.user.id) {
+            return res.status(403).json({
+                status: "error",
+                mensaje: "No tienes permiso para editar esta publicacion"
             });
         }
 
@@ -275,6 +294,10 @@ const subir = async (req, res) => {
         const articulo = await Publicacion.findByPk(articuloId);
         if (!articulo) {
             return res.status(404).json({ status: "error", mensaje: "Publicacion no encontrada" });
+        }
+
+        if (articulo.usuario !== req.user.id) {
+            return res.status(403).json({ status: "error", mensaje: "No tienes permiso para modificar esta publicacion" });
         }
 
         const resultado = await imageProcessor.procesarImagenSubida({
