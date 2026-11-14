@@ -69,3 +69,24 @@ CREATE TABLE IF NOT EXISTS face_detections (
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_face_detections_owner ON face_detections(owner_type, owner_id);
+
+-- Auditoria de transacciones: quien hizo que, cuando y desde donde.
+-- user_id NO es FK a proposito: el registro debe sobrevivir si se borra el usuario.
+-- Nunca se guardan contrasenas, tokens ni archivos (ver docs/AUDITORIA_TRANSACCIONES.md).
+CREATE TABLE IF NOT EXISTS audit_log (
+    id            BIGSERIAL PRIMARY KEY,
+    ocurrio_en    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    user_id       INTEGER,                 -- NULL si no hay sesion (login fallido)
+    accion        VARCHAR(60) NOT NULL,    -- p. ej. LOGIN_OK, POST_BORRADO
+    metodo        VARCHAR(10) NOT NULL,
+    ruta          VARCHAR(255) NOT NULL,
+    status_code   INTEGER NOT NULL,
+    ip            VARCHAR(45),
+    detalle       JSONB DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_audit_usuario ON audit_log(user_id, ocurrio_en DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_accion ON audit_log(accion, ocurrio_en DESC);
+
+-- Recomendado en produccion: el usuario de la app solo inserta y lee el registro.
+-- REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM app_user;
+

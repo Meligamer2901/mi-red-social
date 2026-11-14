@@ -1,7 +1,7 @@
 # Plan de mantenimiento de la base de datos
 
 Proyecto Final de Desarrollo Web (UMG) — Red social de fotografías.
-Motor: **PostgreSQL 14+** · Tablas: `users`, `posts`, `followers`, `image_variants`, `face_detections`.
+Motor: **PostgreSQL 14+** · Tablas: `users`, `posts`, `followers`, `image_variants`, `face_detections`, `audit_log`.
 
 Un mantenimiento regular evita tres problemas: que la base crezca sin control, que las
 consultas se vuelvan lentas y que un respaldo no sirva cuando se necesita.
@@ -66,7 +66,8 @@ WHERE state = 'active' AND now() - query_start > interval '1 minute';
 ```
 
 Las imágenes no ocupan espacio en la base (viven en S3); lo que más crece es
-`image_variants` (4 filas por foto) y `face_detections`.
+`image_variants` (4 filas por foto), `face_detections` y `audit_log` (una fila por acción
+del usuario; retención de 12 meses y luego exportar a S3, ver `AUDITORIA_TRANSACCIONES.md`).
 
 ## 4. Limpieza de registros huérfanos
 

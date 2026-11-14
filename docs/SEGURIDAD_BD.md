@@ -28,8 +28,10 @@ Las imágenes **no** viven en la base de datos: solo su ruta o *key* de S3.
 | Base de datos no expuesta a internet | Implementado | PostgreSQL escucha solo en `localhost` (valor por defecto en Ubuntu) y el Security Group no abre el puerto 5432 |
 | Conexión cifrada (SSL) | Opcional | `DB_SSL=true` en `.env` |
 | Usuario de BD con privilegios mínimos | Parcial | El script de despliegue crea un usuario propietario de la BD, no superusuario |
-| Límite de intentos de login | **No implementado** | Ver sección 8 |
-| Validación estricta de entradas | **Parcial** | La librería `validator` está instalada pero ningún archivo la usa todavía |
+| Límite de intentos de login y registro | **Implementado** | `middlewares/limites.js` (`express-rate-limit`: 10 intentos de login por 15 min y 10 registros por hora, por IP) |
+| Cabeceras de seguridad HTTP | **Implementado** | `helmet` en `index.js` |
+| Auditoría de transacciones | **Implementado** | Tabla `audit_log` (ver `AUDITORIA_TRANSACCIONES.md`) |
+| Validación de entradas | **Implementado** | `validator` en `Controlador/user.js` (`validarDatosUsuario`): correo válido, nick de 3 a 30 caracteres, contraseña de 6 a 72 |
 
 ## 3. Control de acceso
 
@@ -71,8 +73,9 @@ puerto 5432 **únicamente desde el Security Group de la instancia EC2** (ver
 - Las sesiones usan **JWT** firmado con `JWT_SECRET` (`servicios/jwt.js`) y expiran a los
   30 días. El middleware `middlewares/auth.js` rechaza peticiones sin token, con token
   inválido o vencido.
-- `JWT_SECRET` debe ser una cadena aleatoria larga. Si falta, el código usa una clave de
-  desarrollo y, en producción, imprime una advertencia: **nunca desplegar así**.
+- `JWT_SECRET` debe ser una cadena aleatoria larga. En desarrollo, si falta, se usa una
+  clave de prueba; en **producción** (`NODE_ENV=production`) la aplicación **se niega a
+  arrancar** sin `JWT_SECRET`, para no firmar sesiones con una clave conocida.
 
 ## 6. Cifrado
 
@@ -86,8 +89,11 @@ puerto 5432 **únicamente desde el Security Group de la instancia EC2** (ver
 ## 7. Gestión de secretos
 
 - `.env` está en `.gitignore`: **nunca** se sube a GitHub.
-- Los secretos del proyecto: `DB_PASSWORD`, `JWT_SECRET`, `RECAPTCHA_SECRET_KEY` y las
-  llaves IAM de S3.
+- Los secretos del proyecto: `DB_PASSWORD`, `JWT_SECRET` y `RECAPTCHA_SECRET_KEY`.
+- La aplicación accede a S3 mediante un **rol IAM asociado a la instancia**: no hay claves de
+  AWS guardadas en el servidor ni en el repositorio.
+- El usuario IAM del catedrático tiene una clave de acceso con permisos mínimos (iniciar y
+  detener solo esta instancia); se entrega por canal privado y se desactiva después de la revisión.
 - Entregar al catedrático los secretos por un canal seguro, no por el repositorio.
 - Rotación: si una clave se filtra, cambiarla en `.env`, ejecutar `pm2 restart
   mi-red-social` y, en el caso de `JWT_SECRET`, tener en cuenta que invalida todas las
@@ -95,15 +101,19 @@ puerto 5432 **únicamente desde el Security Group de la instancia EC2** (ver
 
 ## 8. Brechas conocidas y mejoras recomendadas
 
+Ya resueltas en el código: límite de intentos de login/registro, cabeceras `helmet`,
+validación de entradas, CORS limitado al dominio en producción (si `CORS_ORIGIN` falta se
+usa `BASE_URL`; `*` solo en desarrollo) y arranque obligatorio con `JWT_SECRET`.
+
+Pendientes (mejoras para un entorno real):
+
 | Brecha | Riesgo | Mejora |
 |---|---|---|
-| `CORS_ORIGIN=*` por defecto | Cualquier sitio puede llamar a la API | En producción fijar el dominio real, p. ej. `https://miredsocial.com` |
-| Sin límite de intentos de login | Fuerza bruta contra contraseñas | Añadir `express-rate-limit` en `/login/user` y `/registrar/user` (el reCAPTCHA ayuda, pero no sustituye al límite) |
-| Sin cabeceras de seguridad HTTP | Clickjacking, sniffing de tipo MIME | Añadir `helmet` en `index.js` |
 | JWT de 30 días sin revocación | Un token robado sirve hasta vencer | Reducir la vigencia (p. ej. 24 h) |
 | Token guardado en `localStorage` | Lo puede leer un script inyectado | Mantener el escape de texto de React y, si crece el proyecto, pasar a cookie `HttpOnly` |
 | `DB_SSL` con `rejectUnauthorized: false` | Acepta certificados no verificados | Con RDS, usar el certificado raíz de AWS y activar la verificación |
 | `sequelize.sync({ alter: true })` en desarrollo | Cambios de esquema sin control | En producción usar migraciones (ya se desactiva `alter` con `NODE_ENV=production`) |
+| Bucket S3 con lectura pública | Cualquiera con la URL ve la foto | Aceptable para el feed público; con fotos privadas usar URLs firmadas |
 
 ## 9. Lista de verificación antes de entregar
 
@@ -111,5 +121,7 @@ puerto 5432 **únicamente desde el Security Group de la instancia EC2** (ver
 - [ ] El puerto 5432 **no** aparece en el Security Group
 - [ ] `.env` no está en el repositorio (`git ls-files | grep .env` no debe mostrarlo)
 - [ ] `CORS_ORIGIN` apunta al dominio real
+- [ ] El zip o repositorio que se entrega **no incluye** `.env`, `node_modules` ni archivos `.pem`
+- [ ] El usuario de la app solo puede insertar y leer en `audit_log` (`REVOKE UPDATE, DELETE, TRUNCATE`)
 - [ ] El volumen EBS y el bucket S3 tienen cifrado activado
 - [ ] Hay un respaldo reciente y se probó restaurarlo (ver [`PLAN_RECUPERACION_DESASTRES.md`](PLAN_RECUPERACION_DESASTRES.md))

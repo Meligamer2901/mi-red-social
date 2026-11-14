@@ -3,14 +3,15 @@
 Esta guía documenta cómo se desplegó el proyecto y cómo repetirlo. Se hizo con una
 cuenta nueva de **AWS (plan gratuito / Free plan)**.
 
-> **Desviaciones respecto al enunciado (justificadas)**
->
-> | Enunciado | Lo que se usó | Motivo |
-> |---|---|---|
-> | Región N. Virginia (us-east-1) | **Ohio (us-east-2)** | El plan gratuito de la cuenta nueva solo permite operar en us-east-2 sin pasar a plan de pago. |
-> | Instancia t2.small | **t3.micro** (1 GB RAM) + 2 GB de swap | Es el único tipo elegible en el plan gratuito. El swap compensa la poca memoria. |
->
-> El resto del diseño (EC2, S3, base relacional, PM2, nginx, IAM, SSH) es el mismo.
+## Desviaciones respecto al enunciado
+
+| Enunciado | Lo que se usó | Motivo |
+|---|---|---|
+| Región N. Virginia (us-east-1) | **Ohio (us-east-2)** | El plan gratuito de la cuenta nueva solo permite operar en us-east-2 sin pasar a plan de pago. |
+| Instancia t2.small | **t3.micro** (1 GB RAM) + 2 GB de swap | Es el único tipo elegible en el plan gratuito. El swap compensa la poca memoria. |
+| Route 53 para el DNS | **DuckDNS** (gratuito) + HTTPS con Let's Encrypt | Evita el costo de un dominio de pago; Google exige dominio con HTTPS para el login. |
+
+El resto del diseño (EC2, S3, base relacional, PM2, nginx, IAM, SSH) es el mismo.
 
 ## Resumen de lo desplegado
 
@@ -19,8 +20,9 @@ cuenta nueva de **AWS (plan gratuito / Free plan)**.
 | Región | us-east-2 (Ohio) |
 | Instancia | t3.micro, Ubuntu Server 24.04 LTS, ID `i-080caf245240b78e3` |
 | IP pública (Elastic IP) | `77.113.123.181` |
-| DNS público | `ec2-77-113-123-181.us-east-2.compute.amazonaws.com` (confirmar en la consola) |
-| Sitio | `http://77.113.123.181` |
+| Dominio | `miredsocialweb.duckdns.org` (DuckDNS, gratuito) |
+| DNS público de AWS | `ec2-77-113-123-181.us-east-2.compute.amazonaws.com` (confirmar en la consola) |
+| Sitio | `https://miredsocialweb.duckdns.org` |
 | Frontend | React (Vite) compilado en `frontend/dist`, servido por nginx |
 | Backend | Node.js/Express en el puerto 4000 (PM2), accesible solo vía nginx |
 | Base de datos | PostgreSQL local en la instancia (`mi_red_social`) |
@@ -117,7 +119,9 @@ REKOGNITION_ENABLED=false
    bucket (lectura pública de objetos).
 3. **IAM → Políticas → Crear política (JSON)** con
    [`deploy/iam-app-s3-policy.json`](../deploy/iam-app-s3-policy.json) (permisos de
-   escritura/lectura solo sobre ese bucket).
+   escritura, lectura y **borrado** — `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` y
+   `s3:ListBucket` — solo sobre ese bucket). Sin `s3:DeleteObject`, al borrar una
+   publicación sus archivos quedarían huérfanos en S3.
 4. **IAM → Roles → Crear rol** (entidad: servicio EC2), adjuntar esa política.
 5. **EC2 → Instancia → Acciones → Seguridad → Modificar rol de IAM** y asociar el rol.
 6. `pm2 restart mi-red-social`. La app usa las credenciales temporales del rol: **no
@@ -125,19 +129,31 @@ REKOGNITION_ENABLED=false
 7. Subir una foto y comprobar en S3 (`post/`) los 4 archivos: original, miniatura,
    blanco y negro, sepia.
 
-## 6. reCAPTCHA, Google Login, dominio y HTTPS
+## 6. reCAPTCHA, dominio, HTTPS y Google Login
 
 - **reCAPTCHA v2**: en el panel de administración se desactivó "Verificar el origen de
-  las solicitudes de reCAPTCHA" para que funcione al acceder por IP. Con dominio
+  las solicitudes de reCAPTCHA" para que funcione también al acceder por IP. Con dominio
   propio se puede volver a activar agregando el dominio.
-- **Google Login**: Google exige dominio propio con HTTPS en los "Orígenes
-  autorizados de JavaScript"; no acepta IPs ni dominios `amazonaws.com`. Con dominio:
-  1. Route 53 → zona alojada del dominio → registro **A** a `77.113.123.181`.
-  2. `sudo apt install certbot python3-certbot-nginx && sudo certbot --nginx -d <dominio>`.
-  3. Agregar `https://<dominio>` a los orígenes autorizados del Client ID.
-  4. Actualizar `BASE_URL` y `CORS_ORIGIN` en `.env` y `pm2 restart mi-red-social`.
-- Mientras no haya dominio, el registro e inicio de sesión **con correo + contraseña +
-  reCAPTCHA** funcionan con normalidad.
+- **Dominio gratuito (DuckDNS)**: se creó `miredsocialweb.duckdns.org` apuntando a la Elastic
+  IP `77.113.123.181`. Es una desviación respecto al requisito de Route 53 (ver tabla del
+  inicio); el servicio equivalente de Route 53 sería una zona alojada con un registro A a
+  la misma IP.
+- **HTTPS con Let's Encrypt**: el bloque de nginx usa el nombre del dominio y Certbot emite y
+  renueva el certificado automáticamente:
+  ```bash
+  sudo sed -i 's/server_name _;/server_name miredsocialweb.duckdns.org;/' /etc/nginx/sites-available/mi-red-social
+  sudo nginx -t && sudo systemctl reload nginx
+  sudo apt install certbot python3-certbot-nginx -y
+  sudo certbot --nginx -d miredsocialweb.duckdns.org --agree-tos -m <correo> --redirect --no-eff-email
+  ```
+  Requiere el puerto 443 abierto en el Security Group.
+- **Actualizar la dirección de la app** en `.env` (`BASE_URL` y `CORS_ORIGIN` con
+  `https://miredsocialweb.duckdns.org`) y `pm2 restart mi-red-social`.
+- **Google Login**: usa el Client ID del equipo (`GOOGLE_CLIENT_ID` en `.env` y en
+  `frontend/src/config.js`, que se incrusta al compilar el frontend). Google exige que el
+  origen `https://miredsocialweb.duckdns.org` esté en "Orígenes autorizados de JavaScript" y,
+  mientras la pantalla de consentimiento esté en modo Prueba, que cada correo esté como usuario de
+  prueba. No acepta IPs.
 
 ## 7. Acceso del catedrático (IAM limitado)
 
@@ -161,8 +177,9 @@ Detalles de la entrega en [`ENTREGA_CATEDRATICO.md`](ENTREGA_CATEDRATICO.md).
 ## 8. Antes de la entrega
 
 1. Respaldar la BD (`deploy/backup-db.sh`).
-2. Cambiar la regla SSH del Security Group a una IP concreta o dejarla según se
-   acuerde con el catedrático.
+2. Revisar la regla SSH (puerto 22) del Security Group: dejarla en la IP del equipo
+   o, si el catedrático necesita entrar por SSH con la llave `.pem`, abrirla a su IP
+   (o a `0.0.0.0/0` solo durante la revisión). El inicio/detención con la CLI no usa SSH.
 3. **Detener (Stop, no Terminate)** la instancia:
    `aws ec2 stop-instances --instance-ids i-080caf245240b78e3 --region us-east-2`
    o **EC2 → Estado de la instancia → Detener**. Con la Elastic IP asociada, la IP
@@ -173,7 +190,7 @@ Detalles de la entrega en [`ENTREGA_CATEDRATICO.md`](ENTREGA_CATEDRATICO.md).
 
 - [ ] `http://<dominio-o-IP>/` carga la app React
 - [ ] Registro e inicio de sesión con correo y reCAPTCHA
-- [ ] Login con Google (requiere dominio + HTTPS)
+- [ ] Login con Google (requiere el dominio HTTPS autorizado)
 - [ ] Subir foto: aparecen 4 archivos en S3 (`post/`)
 - [ ] Análisis facial funciona (`pm2 logs mi-red-social`)
 - [ ] `pm2 status` en línea y sobrevive a un reinicio de la instancia

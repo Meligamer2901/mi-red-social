@@ -79,7 +79,7 @@ export default function EditarPerfil() {
                 </label>
                 <label className="campo">
                     <span>Nueva contraseña</span>
-                    <input type="password" value={form.password} onChange={cambiar("password")} autoComplete="new-password" placeholder="Déjala en blanco para conservar la actual" />
+                    <input type="password" value={form.password} onChange={cambiar("password")} autoComplete="new-password" minLength={6} maxLength={72} placeholder="Déjala en blanco para conservar la actual" />
                 </label>
                 {errorDatos && <p className="texto-error" role="alert">{errorDatos}</p>}
                 <div className="formulario-acciones">

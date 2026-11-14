@@ -13,7 +13,7 @@ Group. La separación entre componentes es **lógica** (procesos y puertos), no 
 
 ```mermaid
 flowchart LR
-    U["Usuarios\n(Internet)"] --> R53["Route 53\n(DNS)"]
+    U["Usuarios\n(Internet)"] --> R53["DuckDNS\n(DNS gratuito)"]
     R53 --> SG
     subgraph SG["Security Group: web (80, 443 abiertos · 22 solo tu IP)"]
         subgraph EC2["EC2 t3.micro (Ubuntu)"]
@@ -32,7 +32,7 @@ flowchart LR
 
 | Dirección | Tipo | Puerto | Origen / destino | Motivo |
 |---|---|---|---|---|
-| Entrada | SSH | 22 | **Solo la IP del administrador** | Administración remota |
+| Entrada | SSH | 22 | **IP del administrador** (si el catedrático necesita entrar por SSH, abrirlo a su IP o a `0.0.0.0/0` solo durante la revisión; la captura 8 de las evidencias lo muestra abierto) | Administración remota |
 | Entrada | HTTP | 80 | 0.0.0.0/0 | Sitio web y desafío de Certbot |
 | Entrada | HTTPS | 443 | 0.0.0.0/0 | Sitio web cifrado |
 | Entrada | — | 4000 | **Cerrado** | La API solo se alcanza a través de nginx |
@@ -46,8 +46,8 @@ flowchart LR
 | Público | nginx (80/443) | Cualquier usuario de internet |
 | Aplicación | Node.js en el puerto 4000 | Solo nginx, por `127.0.0.1` |
 | Datos | PostgreSQL en el puerto 5432 | Solo la app, por `localhost` |
-| Almacenamiento | Bucket S3 | La app, con una llave IAM de mínimo privilegio; lectura pública solo de las fotos |
-| Administración | SSH | Solo la IP del administrador |
+| Almacenamiento | Bucket S3 | La app, con un rol IAM de mínimo privilegio asociado a la instancia (sin claves en el servidor); lectura pública solo de las fotos |
+| Administración | SSH | La IP del administrador (o la del catedrático durante la revisión) |
 
 ## 2. Firewall del servidor (refuerzo opcional)
 
@@ -71,7 +71,7 @@ subred privada, sin ruta a internet.
 
 ```mermaid
 flowchart TB
-    U["Internet"] --> R53["Route 53"] --> IGW["Internet Gateway"]
+    U["Internet"] --> R53["DuckDNS"] --> IGW["Internet Gateway"]
     subgraph VPC["VPC 10.0.0.0/16 (us-east-2)"]
         subgraph PUB["Subred pública 10.0.1.0/24"]
             WEB["EC2: nginx + Node.js\nSG-web"]

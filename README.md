@@ -25,7 +25,7 @@ reconocimiento facial automáticos, y almacenamiento en la nube (Amazon S3).
 | Autenticación | JWT propio + bcrypt (hash + sal) + Google OAuth2 + reCAPTCHA v2 |
 | Procesamiento de imagenes | Sharp (transformaciones) + face-api.js (reconocimiento facial) |
 | Almacenamiento | Disco local (desarrollo) / Amazon S3 (producción) |
-| Despliegue | AWS EC2 (t3.micro, Ohio us-east-2) + PM2 + nginx + Route 53 |
+| Despliegue | AWS EC2 (t3.micro, Ohio us-east-2) + PM2 + nginx + DNS DuckDNS + HTTPS (Let's Encrypt) |
 
 ## Documentación
 
@@ -33,6 +33,11 @@ reconocimiento facial automáticos, y almacenamiento en la nube (Amazon S3).
 - [`docs/ESQUEMA_BD.md`](docs/ESQUEMA_BD.md) — esquema de la base de datos relacional.
 - [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) — instrucciones paso a paso para desplegar en AWS.
 - [`docs/ENTREGA_CATEDRATICO.md`](docs/ENTREGA_CATEDRATICO.md) — datos de acceso y pasos para la revisión.
+- [`docs/README.md`](docs/README.md) — índice que relaciona cada entregable y manual del enunciado con su archivo.
+- [`docs/MANUAL_TECNICO.md`](docs/MANUAL_TECNICO.md) — manual técnico: frontend, API REST, variables de entorno y operación.
+- [`docs/DIAGRAMA_COMPONENTES.md`](docs/DIAGRAMA_COMPONENTES.md) — diagrama distribuido de componentes.
+- [`docs/DIAGRAMAS_CLOUD.md`](docs/DIAGRAMAS_CLOUD.md) — diagramas de cloud computing (AWS, IAM, flujo de solicitud).
+- [`docs/PLAN_CAPACITACION_IT.md`](docs/PLAN_CAPACITACION_IT.md) — plan de capacitaciones para el equipo de IT.
 - [`docs/MANUAL_USUARIO.md`](docs/MANUAL_USUARIO.md) — cómo usar la aplicación.
 - [`docs/SEGURIDAD_BD.md`](docs/SEGURIDAD_BD.md) — manual de seguridad de la base de datos.
 - [`docs/MANTENIMIENTO_BD.md`](docs/MANTENIMIENTO_BD.md) — plan de mantenimiento de la base de datos.
@@ -72,23 +77,6 @@ Usa el backend en `http://localhost:4000/api` por defecto; para cambiarlo copia
 `frontend/.env.example` como `frontend/.env`. Para producción: `npm run build`
 (genera `frontend/dist`, que nginx puede servir como sitio estático).
 
-> Para que funcione el login con Google, `http://localhost:5173` debe estar en los
-> "Orígenes autorizados de JavaScript" del Client ID en Google Cloud, y `localhost`
-> en los dominios del reCAPTCHA.
-
-### 3b. Frontend anterior (HTML + JavaScript)
-
-### 3c. Abrir el frontend
-
-Abre `index.html` (o `login.html` para empezar) con un servidor estático
-cualquiera (por ejemplo la extensión "Live Server" de VS Code, o
-`npx serve .`) — el frontend llama al backend en `http://localhost:4000/api`
-(configurable en [`config.js`](config.js)).
-
-> En modo local, por defecto `STORAGE_DRIVER=local`: las imágenes y sus
-> transformaciones se guardan en `./imagenes/`, sin necesidad de una cuenta de
-> AWS. Para probar con S3 real, ver `docs/DESPLIEGUE.md`.
-
 ## Estructura del proyecto
 
 ```
@@ -96,13 +84,13 @@ Controlador/     Logica de negocio (usuarios, publicaciones, follows, imagenes)
 rutas/           Definicion de endpoints REST
 modelo/          Modelos Sequelize (PostgreSQL) + asociaciones
 servicios/       JWT, almacenamiento (local/S3), pipeline de procesamiento de imagenes
-middlewares/     Autenticacion JWT
+middlewares/     Autenticacion JWT, auditoria (audit_log) y limite de intentos
 database/        Conexion Sequelize + esquema SQL de referencia
 models/          Pesos del modelo de face-api.js (NO son modelos de datos)
 deploy/          Scripts y plantillas para el despliegue en AWS (EC2, S3, IAM)
 docs/            Documentacion de arquitectura, BD, despliegue y usuario
 imagenes/        Fotos subidas en modo de almacenamiento local
-*.html, app.js, css/   Frontend estatico
+frontend/        Frontend React (Vite + React Router)
 ```
 
 ## Funcionalidades implementadas
@@ -119,4 +107,6 @@ imagenes/        Fotos subidas en modo de almacenamiento local
 - [x] Contraseñas con hash bcrypt + sal única por usuario
 - [x] Artefactos de despliegue para AWS EC2 (PM2, nginx, script de bootstrap)
 - [x] Plantillas de política IAM (acceso limitado para el catedrático, acceso S3 de la app)
+- [x] Seguridad de la API: `helmet`, límite de intentos de login/registro, validación de entradas (`validator`), CORS limitado al dominio
+- [x] Auditoría de transacciones (tabla `audit_log`)
 - [ ] Amazon Rekognition (opcional avanzado, no implementado)

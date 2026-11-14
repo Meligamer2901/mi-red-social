@@ -6,6 +6,7 @@ const Publicacion = require("./publicacion");
 const Follower = require("./follower");
 const ImageVariant = require("./imageVariant");
 const FaceDetection = require("./faceDetection");
+const AuditLog = require("./auditLog");
 
 // --- Usuario <-> Publicaciones (1:N) ---
 User.hasMany(Publicacion, { foreignKey: "usuario", as: "publicaciones" });
@@ -30,5 +31,6 @@ module.exports = {
     Publicacion,
     Follower,
     ImageVariant,
-    FaceDetection
+    FaceDetection,
+    AuditLog
 };

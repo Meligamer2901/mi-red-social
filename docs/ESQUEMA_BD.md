@@ -18,6 +18,7 @@ erDiagram
     USERS ||--o{ IMAGE_VARIANTS : "owner_type='user'"
     POSTS ||--o{ IMAGE_VARIANTS : "owner_type='post'"
     POSTS ||--o{ FACE_DETECTIONS : "owner_type='post'"
+    USERS ||--o{ AUDIT_LOG : "user_id (referencia lógica)"
 
     USERS {
         int id PK
@@ -66,6 +67,18 @@ erDiagram
         int faces_count
         jsonb details "edad/genero por rostro"
         timestamp created_at
+    }
+
+    AUDIT_LOG {
+        bigint id PK
+        timestamp ocurrio_en
+        int user_id "NULL si no hay sesion"
+        string accion "LOGIN_OK, POST_BORRADO..."
+        string metodo
+        string ruta
+        int status_code
+        string ip
+        jsonb detalle "nunca contrasenas ni tokens"
     }
 ```
 

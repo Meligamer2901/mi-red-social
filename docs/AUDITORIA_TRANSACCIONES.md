@@ -3,12 +3,8 @@
 Proyecto Final de Desarrollo Web (UMG) — Red social de fotografías.
 
 Una **auditoría** responde a: *¿quién hizo qué, cuándo y desde dónde?* Este documento
-describe qué evidencia deja hoy la aplicación y propone una tabla de auditoría para
-cerrar las brechas.
-
-> **Estado:** la trazabilidad **básica** ya existe (fechas en las tablas y logs). El
-> registro estructurado de auditoría de la sección 4 es una **propuesta de diseño, aún
-> no implementada** en el código.
+describe qué evidencia deja la aplicación, incluida la tabla `audit_log`, que **ya está
+implementada** (modelo `modelo/auditLog.js` y middleware `middlewares/auditoria.js`).
 
 ## 1. Transacciones de la aplicación
 
@@ -25,10 +21,11 @@ cerrar las brechas.
 | Seguir / dejar de seguir | `POST` / `DELETE /api/follow/...` | `followers` |
 | Aplicar filtro a una foto | `POST /api/imagen/transformar` | `image_variants`, `posts` o `users` |
 
-## 2. Evidencia que existe hoy
+## 2. Evidencia que existe
 
 | Fuente | Qué registra | Dónde |
 |---|---|---|
+| Tabla `audit_log` | Quién (usuario o correo intentado), qué acción, cuándo, desde qué IP y con qué código de respuesta | PostgreSQL (se crea sola al arrancar la app) |
 | Columnas de fecha | Cuándo se creó cada registro | `users.created_at`, `posts.fecha`, `followers.fecha_follow`, `image_variants.created_at`, `face_detections.created_at` |
 | Logs de PM2 | Salida y errores de la app, con fecha y hora | `logs/out.log`, `logs/error.log` (`time: true` en `ecosystem.config.js`) |
 | Logs de acceso de nginx | IP, método, ruta, código de respuesta y hora de cada petición | `/var/log/nginx/access.log` |
@@ -37,11 +34,12 @@ cerrar las brechas.
 
 ### Limitaciones actuales
 
-- La app **no guarda quién ejecutó cada acción** de forma estructurada: hay que cruzar
-  logs de nginx con tablas.
-- Los **borrados** (publicaciones, seguidores) no dejan rastro.
-- Los cambios de perfil no guardan el valor anterior.
-- Los logs de PM2 mezclan mensajes técnicos con eventos de negocio.
+- Los cambios de perfil registran **qué acción ocurrió**, pero no guardan el valor anterior
+  (por diseño: jamás se guardan contraseñas ni correos anteriores).
+- Los logs de PM2 mezclan mensajes técnicos con eventos de negocio; para los eventos de
+  negocio se consulta `audit_log`.
+- Los accesos denegados por token inválido o vencido los rechaza `middlewares/auth.js` y
+  quedan en el log de acceso de nginx (códigos 401/403/404), no en `audit_log`.
 
 ## 3. Qué debe registrarse
 
@@ -53,66 +51,54 @@ cerrar las brechas.
 | Crear / editar / borrar publicación | Media | Usuario, id del post |
 | Subir imagen o aplicar filtro | Media | Usuario, id del post, filtro |
 | Seguir / dejar de seguir | Baja | Usuario origen y destino |
-| Acceso denegado (token inválido o vencido) | Alta | IP, ruta |
+| Acceso denegado (token inválido o vencido) | Alta | IP, ruta (queda en el log de acceso de nginx) |
 
 **Nunca** guardar contraseñas, tokens JWT ni el contenido de los archivos en el registro.
 
-## 4. Propuesta: tabla `audit_log`
+## 4. Tabla `audit_log` (implementada)
+
+La tabla se define en `database/schema.sql` y como modelo Sequelize en
+`modelo/auditLog.js` (se crea sola con `sequelize.sync()` al arrancar):
 
 ```sql
 CREATE TABLE IF NOT EXISTS audit_log (
-    id           BIGSERIAL PRIMARY KEY,
-    ocurrio_en   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    user_id      INTEGER,                 -- NULL si no hay sesión (login fallido)
-    accion       VARCHAR(60)  NOT NULL,   -- p. ej. 'LOGIN_OK', 'POST_BORRADO'
-    metodo       VARCHAR(10)  NOT NULL,   -- GET, POST, PUT, DELETE
-    ruta         VARCHAR(255) NOT NULL,
-    status_code  INTEGER      NOT NULL,
-    ip           VARCHAR(45),
-    detalle      JSONB DEFAULT '{}'
+    id            BIGSERIAL PRIMARY KEY,
+    ocurrio_en    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    user_id       INTEGER,                 -- NULL si no hay sesión (login fallido)
+    accion        VARCHAR(60) NOT NULL,    -- p. ej. 'LOGIN_OK', 'POST_BORRADO'
+    metodo        VARCHAR(10) NOT NULL,    -- GET, POST, PUT, DELETE
+    ruta          VARCHAR(255) NOT NULL,
+    status_code   INTEGER NOT NULL,
+    ip            VARCHAR(45),
+    detalle       JSONB DEFAULT '{}'
 );
-CREATE INDEX IF NOT EXISTS idx_audit_usuario ON audit_log(user_id, ocurrio_en DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_accion  ON audit_log(accion, ocurrio_en DESC);
 ```
 
 `user_id` no es una clave foránea a propósito: el registro debe sobrevivir aunque el
 usuario se borre.
 
-### Middleware de auditoría (borrador)
+### Cómo funciona
 
-```js
-// middlewares/auditoria.js  (propuesta)
-const { sequelize } = require("../database/conexion");
+`middlewares/auditoria.js` exporta `auditar(accion)`, que se coloca en cada ruta
+(`rutas/rutas.js`). El registro se escribe cuando la respuesta termina (`finish`), así un
+fallo de auditoría **nunca rompe la petición** del usuario. En `detalle` se guardan los
+parámetros de la ruta y, en login/registro, el **correo intentado**. Las contraseñas, los
+tokens y los textos largos se descartan antes de guardar.
 
-// Uso en rutas:  router.delete("/borrar/publicacion/:id", auth.auth, auditar("POST_BORRADO"), ...)
-module.exports = (accion) => (req, res, next) => {
-    res.on("finish", () => {
-        sequelize.query(
-            `INSERT INTO audit_log (user_id, accion, metodo, ruta, status_code, ip, detalle)
-             VALUES (:userId, :accion, :metodo, :ruta, :status, :ip, :detalle)`,
-            {
-                replacements: {
-                    userId: req.user ? req.user.id : null,
-                    accion,
-                    metodo: req.method,
-                    ruta: req.originalUrl,
-                    status: res.statusCode,
-                    ip: req.ip,
-                    detalle: JSON.stringify({ params: req.params })
-                }
-            }
-        ).catch((e) => console.error("No se pudo escribir la auditoría:", e.message));
-    });
-    next();
-};
-```
+Acciones que se registran:
 
-Dos detalles al implementarlo:
+| Acción | Cuándo |
+|---|---|
+| `REGISTRO_USUARIO` / `REGISTRO_FALLIDO` | Alta de cuenta correcta / rechazada |
+| `LOGIN_OK` / `LOGIN_FALLIDO` | Inicio de sesión con correo y contraseña |
+| `LOGIN_GOOGLE_OK` / `LOGIN_GOOGLE_FALLIDO` | Inicio de sesión con Google |
+| `PERFIL_ACTUALIZADO`, `FOTO_PERFIL_CAMBIADA` | Cambios en la cuenta |
+| `POST_CREADO`, `POST_EDITADO`, `POST_BORRADO` | Publicaciones |
+| `IMAGEN_SUBIDA`, `IMAGEN_FILTRO` | Subida de foto y filtros manuales |
+| `POST_LIKE`, `FOLLOW_SEGUIR`, `FOLLOW_DEJAR` | Interacciones sociales |
 
-- Detrás de nginx, activar `app.set("trust proxy", true)` en `index.js`; si no, `req.ip`
-  mostraría siempre `127.0.0.1`. nginx ya envía `X-Forwarded-For`.
-- El registro se escribe al terminar la respuesta (`finish`), así un fallo de auditoría
-  no rompe la petición del usuario.
+Detrás de nginx, `index.js` activa `app.set("trust proxy", 1)`; sin eso `req.ip`
+mostraría siempre `127.0.0.1`. nginx ya envía `X-Forwarded-For`.
 
 ## 5. Protección del registro de auditoría
 

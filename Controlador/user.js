@@ -1,6 +1,7 @@
 // Importar dependencias
 const bcrypt = require("bcryptjs");
 const { Op } = require("sequelize");
+const validator = require("validator");
 
 // Importar modelos (Sequelize / PostgreSQL)
 const { User, Publicacion } = require("../modelo");
@@ -28,6 +29,38 @@ function serializarUsuario(usuario) {
     };
 }
 
+// Validacion de entradas con la libreria "validator". Devuelve un mensaje de
+// error (string) o null si todo es valido. Con { parcial: true } solo se
+// validan los campos que vengan en la peticion (actualizacion de perfil).
+function validarDatosUsuario(datos, { parcial = false } = {}) {
+    const texto = (v) => (typeof v === "string" ? v : "");
+
+    if (!parcial || datos.name !== undefined) {
+        if (!validator.isLength(texto(datos.name).trim(), { min: 1, max: 60 })) {
+            return "El nombre es obligatorio (maximo 60 caracteres).";
+        }
+    }
+    if (datos.surname !== undefined && texto(datos.surname).length > 60) {
+        return "Los apellidos no pueden pasar de 60 caracteres.";
+    }
+    if (!parcial || datos.nick !== undefined) {
+        if (!validator.matches(texto(datos.nick), /^[A-Za-z0-9._-]{3,30}$/)) {
+            return "El usuario (nick) debe tener de 3 a 30 caracteres: letras, numeros, punto, guion o guion bajo.";
+        }
+    }
+    if (!parcial || datos.email !== undefined) {
+        if (!validator.isEmail(texto(datos.email)) || texto(datos.email).length > 120) {
+            return "El correo electronico no es valido.";
+        }
+    }
+    if (!parcial || datos.password !== undefined) {
+        if (!validator.isLength(texto(datos.password), { min: 6, max: 72 })) {
+            return "La contrasena debe tener entre 6 y 72 caracteres.";
+        }
+    }
+    return null;
+}
+
 // Acciones de prueba
 const pruebaUser = (req, res) => {
     return res.status(200).send({
@@ -46,6 +79,11 @@ const register = async (req, res) => {
                 status: "error",
                 message: "Faltan datos por enviar"
             });
+        }
+
+        const errorValidacion = validarDatosUsuario(params);
+        if (errorValidacion) {
+            return res.status(400).json({ status: "error", message: errorValidacion });
         }
 
         // reCAPTCHA tambien en el registro (ademas del login)
@@ -228,6 +266,11 @@ const update = async (req, res) => {
         delete userToUpdate.image;
         delete userToUpdate.id;
         delete userToUpdate._id;
+
+        const errorValidacion = validarDatosUsuario(userToUpdate, { parcial: true });
+        if (errorValidacion) {
+            return res.status(400).send({ status: "error", message: errorValidacion });
+        }
 
         const emailToCheck = userToUpdate.email ? userToUpdate.email.toLowerCase() : null;
         const nickToCheck = userToUpdate.nick ? userToUpdate.nick.toLowerCase() : null;
