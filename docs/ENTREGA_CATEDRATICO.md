@@ -10,7 +10,7 @@ en este repositorio.
 | Región | us-east-2 (Ohio) |
 | ID de instancia | `i-080caf245240b78e3` |
 | IP pública (Elastic IP) | `77.113.123.181` |
-| Sitio web | `http://77.113.123.181` |
+| Sitio web | `https://miredsocialweb.duckdns.org` |
 | Usuario SSH | `ubuntu` |
 | Estado al entregar | Detenida (Stopped) |
 
@@ -29,7 +29,7 @@ aws ec2 describe-instances --instance-ids i-080caf245240b78e3 --region us-east-2
     --query "Reservations[0].Instances[0].State.Name"
 ```
 
-Esperar 1-2 minutos y abrir `http://77.113.123.181`. La aplicación arranca sola (PM2).
+Esperar 1-2 minutos y abrir `https://miredsocialweb.duckdns.org`. La aplicación arranca sola (PM2).
 
 Conexión por terminal (opcional):
 
@@ -50,5 +50,6 @@ aws ec2 stop-instances --instance-ids i-080caf245240b78e3 --region us-east-2
 - Instancia t3.micro en lugar de t2.small (único tipo gratuito); se añadió swap de 2 GB.
 - Acceso del catedrático por clave de acceso (CLI), ya que la consola del plan
   gratuito no permite contraseña de consola para usuarios IAM.
-- Login con Google pendiente de dominio con HTTPS (Google no acepta IPs); el
-  registro/inicio de sesión con correo y reCAPTCHA funciona.
+- DNS con DuckDNS (gratuito) en lugar de Route 53, con HTTPS de Let's Encrypt.
+- El Login con Google usa el Client ID del equipo; los correos que lo prueben deben estar
+  agregados como usuarios de prueba. El registro con correo y reCAPTCHA funciona siempre.

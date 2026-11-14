@@ -23,7 +23,7 @@ flowchart LR
 
     S3[("Amazon S3\nimagenes originales +\ntransformaciones")]
     GOOGLE["Google OAuth\n+ reCAPTCHA"]
-    R53["Route 53\n(DNS)"]
+    R53["DuckDNS\n(DNS gratuito)"]
     FACEAPI["face-api.js\n(reconocimiento facial\nen el propio proceso Node)"]
 
     R53 --> NGINX
@@ -47,7 +47,10 @@ servicios/
   jwt.js                   -> firma/verifica tokens de sesion
   storage.js                -> abstraccion de almacenamiento (local disco <-> S3)
   imageProcessor.js          -> pipeline de transformaciones automaticas + reconocimiento facial
-middlewares/auth.js         -> valida el JWT en rutas protegidas
+middlewares/
+  auth.js                    -> valida el JWT en rutas protegidas
+  auditoria.js               -> registra cada transaccion en la tabla audit_log
+  limites.js                 -> limite de intentos de login/registro (rate limiting)
 database/
   conexion.js               -> conexion Sequelize + sync de modelos
   schema.sql                 -> esquema SQL de referencia (documentacion/manual)
@@ -124,11 +127,15 @@ capa, así que cambiar de un entorno a otro es solo cuestión de variables de en
   ReactJS. El frontend (`frontend/`) está hecho con React 18, Vite y React Router;
   Google Login y reCAPTCHA v2 son componentes React (`GoogleButton.jsx`,
   `Recaptcha.jsx`). Para producción se compila con `npm run build` y nginx sirve la
-  carpeta `frontend/dist` como sitio estático. Los archivos HTML y `app.js` de la
-  raíz son la versión anterior del frontend y ya no se usan.
+  carpeta `frontend/dist` como sitio estático. La versión anterior del frontend
+  (HTML + JavaScript) se eliminó del proyecto.
 - **Amazon Rekognition**: no implementado (es el punto "opcional avanzado" del
   enunciado). El reconocimiento facial se resuelve con `face-api.js`, que sí es un
   requisito obligatorio.
+- **Seguridad de la API**: `helmet` (cabeceras HTTP), límite de intentos en login y
+  registro (`express-rate-limit`), validación de entradas con `validator`, CORS limitado al
+  dominio en producción y arranque obligatorio con `JWT_SECRET`. Cada transacción queda
+  en la tabla `audit_log` (ver `docs/AUDITORIA_TRANSACCIONES.md`).
 - **Autenticación**: JWT propio (`servicios/jwt.js`) + bcrypt con sal única por
   usuario (`bcrypt.hash(password, 10)` genera y embebe una sal distinta en cada
   llamada) + Google OAuth2 + reCAPTCHA v2 (en login y registro).

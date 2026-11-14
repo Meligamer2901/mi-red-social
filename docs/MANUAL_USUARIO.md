@@ -10,6 +10,7 @@ explorar fotografías (estilo Instagram).
 2. En **Registrarse**, completa nombre, apellidos, usuario (nick), correo y
    contraseña. Opcionalmente adjunta una foto de perfil.
 3. Marca la casilla **"No soy un robot"** (reCAPTCHA) — es obligatoria.
+   La contraseña debe tener entre 6 y 72 caracteres, el usuario (nick) de 3 a 30 (letras, números, punto, guion o guion bajo) y el correo debe ser válido.
 4. Presiona **Registrarse**. Si todo es correcto, se te redirige al inicio de
    sesión (o directo al feed si subiste foto de perfil).
 
@@ -18,6 +19,7 @@ explorar fotografías (estilo Instagram).
 Tienes dos formas:
 
 - **Formulario tradicional**: correo + contraseña + reCAPTCHA.
+  Por seguridad, después de 10 intentos fallidos desde la misma conexión hay que esperar unos 15 minutos.
 - **Botón "Sign in with Google"**: inicia sesión con tu cuenta de Google sin
   necesidad de crear una contraseña (si es tu primera vez, se crea la cuenta
   automáticamente).

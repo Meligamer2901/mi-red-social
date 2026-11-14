@@ -5,15 +5,11 @@ Proyecto Final de Desarrollo Web (UMG) — Red social de fotografías.
 Este documento cubre tanto el *plan de recuperación contra desastres* como el
 *Disaster Recovery Plan* que menciona el enunciado: es el mismo plan.
 
-> **Estado:** el plan está documentado y el script de respaldo existe
-> (`deploy/backup-db.sh`), pero los respaldos automáticos **no vienen activados**
-> con el script de despliegue: hay que programarlos en la instancia (sección 4).
-
 ## 1. Objetivo y alcance
 
 Restablecer el servicio (sitio, base de datos e imágenes) después de una falla, con la
 menor pérdida de datos y el menor tiempo posible. Cubre la instancia EC2, PostgreSQL,
-el bucket S3, el DNS en Route 53 y el código en GitHub.
+el bucket S3, el DNS en DuckDNS y el código en GitHub.
 
 ## 2. Inventario de activos y criticidad
 
@@ -24,7 +20,7 @@ el bucket S3, el DNS en Route 53 y el código en GitHub.
 | Imágenes (originales y transformaciones) | Bucket S3 | **Crítica** | Versionado de S3 |
 | Servidor (Node, nginx, PM2) | Instancia EC2 | Alta | AMI + script `deploy/ec2-bootstrap.sh` |
 | Secretos (`.env`) | Solo en la instancia | **Crítica** | Copia cifrada fuera del repositorio |
-| DNS | Route 53 | Media | Registros documentados |
+| DNS | DuckDNS | Media | Registros documentados |
 
 ## 3. Objetivos de recuperación
 
@@ -73,11 +69,11 @@ pm2 restart mi-red-social
 PM2 reinicia el proceso solo si falla y, con `pm2 startup`, también al reiniciar la instancia.
 
 ### 5.2 Falla la instancia o el disco
-1. En EC2, lanzar una instancia nueva **desde la última AMI** (o Ubuntu 22.04 limpio).
+1. En EC2, lanzar una instancia nueva **desde la última AMI** (o Ubuntu Server 24.04 LTS limpio).
 2. Si es limpio: clonar el repositorio y ejecutar `deploy/ec2-bootstrap.sh`, restaurar el `.env`
    y luego la base de datos (sección 5.3).
 3. Asociar la **Elastic IP** a la instancia nueva. Si no se usó Elastic IP, actualizar el
-   registro A en Route 53 con la IP nueva.
+   registro A en DuckDNS con la IP nueva.
 4. Verificar con la lista de la sección 7.
 
 ### 5.3 Base de datos dañada o borrada

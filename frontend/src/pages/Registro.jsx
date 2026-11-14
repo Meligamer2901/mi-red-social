@@ -94,7 +94,7 @@ export default function Registro() {
                     </label>
                     <label className="campo">
                         <span>Contraseña</span>
-                        <input type="password" value={form.password} onChange={cambiar("password")} autoComplete="new-password" required />
+                        <input type="password" value={form.password} onChange={cambiar("password")} autoComplete="new-password" minLength={6} maxLength={72} required />
                     </label>
                     <label className="campo">
                         <span>Foto de perfil (opcional)</span>

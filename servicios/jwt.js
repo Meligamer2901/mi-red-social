@@ -3,13 +3,13 @@ const jwt = require("jwt-simple");
 const moment = require("moment");
 
 // Clave secreta para firmar los tokens. Se toma de la variable de entorno
-// JWT_SECRET (ver .env.example); si no esta definida se usa un valor de
-// desarrollo, pero en produccion SIEMPRE debe configurarse por entorno.
-const claveSecreta = process.env.JWT_SECRET || "clave_secreta_de_desarrollo_cambiame";
-
+// JWT_SECRET (ver .env.example). En desarrollo, si no esta definida, se usa un
+// valor de prueba; en PRODUCCION la app se niega a arrancar sin JWT_SECRET para
+// que nunca se firmen sesiones con una clave conocida.
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
-    console.warn("ADVERTENCIA: JWT_SECRET no esta definido en produccion. Configuralo en el archivo .env");
+    throw new Error("JWT_SECRET no esta definido en produccion. Configuralo en el archivo .env");
 }
+const claveSecreta = process.env.JWT_SECRET || "clave_secreta_de_desarrollo_cambiame";
 
 // Crear una funcion para generar token
 const createToken = (user) => {
